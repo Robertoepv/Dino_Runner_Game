@@ -1,0 +1,7 @@
+ESC      --> close
+
+P        --> pause
+
+SPACEBAR --> reset the position of the circle
+
+ENJOY.
