@@ -1,70 +1,91 @@
+from game.utils.constants import SMALL_CACTUS,LARGE_CACTUS,BIRD,SCREEN_HEIGHT,SCREEN_WIDTH,FONT,COLORS
 import random
-from game.utils.constants import SMALL_CACTUS,LARGE_CACTUS,BIRD,SCREEN_WIDTH
+import pygame
 
-obstacle_dic = {
+OBSTACLES_DICT = {
     "TERRAIN": [SMALL_CACTUS, LARGE_CACTUS],
     "SKY": [BIRD]
     }
 
 class ObstacleBuilder:
-    terrain_y = 310
-    sky_min_y, sky_max_y = 15, 240
+    
     def __init__(self):
-        self.terrain_y = self.terrain_y
-        self.sky_min_y, self.sky_max_y = self.sky_min_y, self.sky_max_y
-        self.last_obstacle_x = SCREEN_WIDTH
         self.obstacles = []
-        self.num_obstacles = 0
-        self.num_terrain_collisions = 0
-        self.num_bird_collisions = 0
+        self.large_cactus_y,self.small_cactus_y = 305,330
+        self.min_distance = random.randint(300, 500)
+        self.on_cactus, self.on_bird = False, False
+        self.count_cactus, self.count_bird = 0, 0
+        self.font = pygame.font.Font(FONT, 17)        
 
-    def generate_obstacle(self):
-        if self.num_obstacles < 2:
-            self.obstacle_type = random.choice(["TERRAIN", "SKY"])
-            if self.obstacle_type == "TERRAIN":
-                self.option = random.randint(0,1)
-                self.obstacle_image = random.choice(obstacle_dic[self.obstacle_type][self.option])
-                obstacle = Obstacle(self.obstacle_image, SCREEN_WIDTH, self.terrain_y, 20)
-            elif self.obstacle_type == "SKY":
-                self.obstacle_image = random.choice(obstacle_dic[self.obstacle_type][0])
-                obstacle_y = random.randint(self.sky_min_y, self.sky_max_y)
-                obstacle_x = SCREEN_WIDTH + random.randint(300, 500)
-                if obstacle_x - self.last_obstacle_x < 200:
-                    obstacle_x += 200
-                obstacle = Obstacle(self.obstacle_image, obstacle_x, obstacle_y, random.randint(20, 22))
-                self.last_obstacle_x = obstacle_x
-                
-            self.obstacles.append(obstacle)
-            self.num_obstacles += 1
-
-    def update(self,player):
-        self.obstacles = [obstacle for obstacle in self.obstacles if obstacle.rect.x >= - obstacle.rect.width]
-        for obstacle in self.obstacles:
-            obstacle.update()
-            if obstacle.rect.colliderect(player.dino.dino_rect):
-                if self.obstacle_image == SMALL_CACTUS or LARGE_CACTUS:
-                    self.num_terrain_collisions += 1
-                    print(f'Dino t-dino collide with cactus {self.num_terrain_collisions} times')
-                elif self.obstacle_image == BIRD:
-                    self.num_bird_collisions += 1
-                    print(f'Dino t-dino collide with bird {self.num_bird_collisions} times')
+    def generate_obstacles(self):
+            obstacle_choise = random.choice(["TERRAIN", "SKY"])
+            if obstacle_choise == 'TERRAIN':
+                image_type, option  = random.randint(0, 1), random.randint(0, 2)
+                obstacle_image = OBSTACLES_DICT[obstacle_choise][image_type][option]
+                if image_type == 0:
+                    obstacle_y = self.small_cactus_y
+                elif image_type == 1:
+                    obstacle_y = self.large_cactus_y
+                obstacle = Obstacle(obstacle_image, SCREEN_WIDTH, obstacle_y, 20)
+                obstacle_x = obstacle.image_rect.x
+                if not self.obstacles or self.last_obstacle_x - obstacle_x >= self.min_distance:
+                    self.obstacles.append(obstacle)
+                    self.last_obstacle_x = obstacle_x
             else:
                 None
-        self.num_obstacles = len(self.obstacles)
+    
+    def check_collision(self,player):
+        for obstacle in self.obstacles:
+            obstacle_type = None
+            if obstacle.image_rect.colliderect(player.dino.dino_rect):
+                if obstacle in OBSTACLES_DICT["TERRAIN"][0]:
+                    obstacle_type = "SMALL_CACTUS"
+                    self.total_points -= 5
+                elif obstacle in OBSTACLES_DICT["TERRAIN"][1]:
+                    obstacle_type = "LARGE_CACTUS"
+                    self.total_points -= 5
+                elif obstacle in OBSTACLES_DICT["SKY"][0]:
+                    obstacle_type = "BIRD"
+                    self.total_points -= 2.5
+                if not self.on_cactus and obstacle_type == "SMALL_CACTUS" or "LARGE_CACTUS":
+                    self.on_cactus = True
+                    self.count_cactus += 1
+                    print(f'{self.count_cactus}')
+                elif obstacle_type and not self.on_bird:
+                    self.count_bird += 1 
+                    self.on_bird = True
+            else:
+                self.on_cactus = False
+                self.on_bird = False
+
+    def update(self):
+        if len(self.obstacles) < 2:
+            self.generate_obstacles()
+        for obstacle in self.obstacles:
+            obstacle.update()
+        if self.obstacles and self.obstacles[0].image_rect.right < 0:
+            self.obstacles.pop(0)
 
     def draw(self, screen):
         for obstacle in self.obstacles:
-            obstacle.draw(screen)
+            screen.blit(obstacle.image, obstacle.image_rect)
+        
+        text_cactus = self.font.render(f'Collided with cactus: {self.count_cactus}', True, COLORS["black"])
+        screen.blit(text_cactus,(20,SCREEN_HEIGHT-70))
+        text_bird = self.font.render(f'Collided with bird: {self.count_bird}', True, COLORS["black"])
+        screen.blit(text_bird,(20,SCREEN_HEIGHT-100))
 
 class Obstacle:
+    image_rect = None
     def __init__(self, image, x, y, speed):
         self.image = image
-        self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = x, y
+        self.image_rect = self.image.get_rect()
+        self.image_rect.x, self.image_rect.y = x, y
         self.speed = speed
+        Obstacle.image_rect = self.image_rect
 
     def update(self):
-        self.rect.x -= self.speed
+        self.image_rect.x -= self.speed
 
     def draw(self, screen):
-        screen.blit(self.image, (self.rect.x, self.rect.y))
+        screen.blit(self.image, (self.image_rect.x, self.image_rect.y))

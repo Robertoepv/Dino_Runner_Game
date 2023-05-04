@@ -1,8 +1,9 @@
 import pygame
-from game.utils.constants import PAUSE_TEXT,BG,ICON,SCREEN_HEIGHT,SCREEN_WIDTH,TITLE,FPS,COLORS,BACKGROUND_SOUND
+from game.utils.constants import FONT,PAUSE_TEXT,BG,ICON,SCREEN_HEIGHT,SCREEN_WIDTH,TITLE,FPS,COLORS,BACKGROUND_SOUND
 from game.components.obstacles.obstacle_builder import ObstacleBuilder
 from game.components.player import Dinosaur
 from game.components.sky import Sky
+# from game.components.points import Points
 
 class Game:
 
@@ -21,8 +22,9 @@ class Game:
         pygame.mixer.music.set_volume(0.4)
         self.dino = Dinosaur('T-Rex')
         self.sky = Sky()
+        # self.points = Points()
         self.obstacles = ObstacleBuilder()
-
+        self.font = pygame.font.Font(FONT, 20)
         self.pause = False
         self.pause_text_rect = PAUSE_TEXT.get_rect()
         self.pause_text_rect.center = self.screen.get_rect().center
@@ -52,8 +54,8 @@ class Game:
     def update(self):
         self.dino.update(pygame.key.get_pressed())
         self.sky.update()
-        self.obstacles.update(self)
-        self.obstacles.generate_obstacle()
+        self.obstacles.update()
+        # self.points.points_manager(self)
         
     def draw(self):
         self.clock.tick(FPS)
@@ -63,6 +65,8 @@ class Game:
         self.dino.draw(self.screen)
         self.obstacles.draw(self.screen)
         self.dino.show_text(self.screen)
+        self.obstacles.check_collision(self)
+        # self.points.draw(self.screen)
         pygame.display.update()
         pygame.display.flip()
 
